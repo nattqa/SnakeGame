@@ -4,9 +4,9 @@ const scoreElement = document.getElementById('score');
 const gameOverElement = document.getElementById('gameOver');
 
 // Game constants
-const GRID_SIZE = 20;
+const GRID_SIZE = 25;
 const CELL_SIZE = 20;
-const MOVE_SPEED = 120;
+const MOVE_SPEED = 160;
 
 // Game state
 let snake = [{ x: 10, y: 10 }];
@@ -171,7 +171,7 @@ function startGameLoop() {
 function gameOver() {
     gameRunning = false;
     clearInterval(gameLoop);
-    gameOverElement.style.display = 'block';
+    gameOverElement.style.visibility = 'visible';
 }
 
 // Restart game
@@ -182,7 +182,7 @@ function restartGame() {
     score = 0;
     scoreElement.textContent = score;
     gameRunning = true;
-    gameOverElement.style.display = 'none';
+    gameOverElement.style.visibility = 'hidden';
     clearInterval(gameLoop);
     startGameLoop();
 }
