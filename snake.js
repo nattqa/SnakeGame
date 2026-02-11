@@ -1,23 +1,30 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const scoreElement = document.getElementById('score');
+const levelElement = document.getElementById('level');
 const gameOverElement = document.getElementById('gameOver');
 
 // Game constants
 const GRID_SIZE = 25;
 const CELL_SIZE = 20;
 const MOVE_SPEED = 160;
+const SPEED_INCREASE = 10;  // Speed increase in milliseconds per level
+const FOODS_PER_LEVEL = 5;  // Number of foods needed to level up
 
 // Game state
 let snake = [{ x: 10, y: 10 }];
 let direction = { x: 1, y: 0 };
-let food = generateFood();
+let food;
+let obstacles = [];
 let score = 0;
+let level = 1;
+let foodEaten = 0;
 let gameRunning = true;
 let gameLoop;
 
 // Initialize game
 function init() {
+    food = generateFood();
     document.addEventListener('keydown', handleKeyPress);
     startGameLoop();
 }
@@ -58,8 +65,23 @@ function generateFood() {
             x: Math.floor(Math.random() * GRID_SIZE),
             y: Math.floor(Math.random() * GRID_SIZE)
         };
-    } while (snake.some(segment => segment.x === newFood.x && segment.y === newFood.y));
+    } while (snake.some(segment => segment.x === newFood.x && segment.y === newFood.y) ||
+             obstacles.some(obstacle => obstacle.x === newFood.x && obstacle.y === newFood.y));
     return newFood;
+}
+
+// Generate random obstacle
+function generateObstacle() {
+    let newObstacle;
+    do {
+        newObstacle = {
+            x: Math.floor(Math.random() * GRID_SIZE),
+            y: Math.floor(Math.random() * GRID_SIZE)
+        };
+    } while (snake.some(segment => segment.x === newObstacle.x && segment.y === newObstacle.y) ||
+             (food.x === newObstacle.x && food.y === newObstacle.y) ||
+             obstacles.some(obstacle => obstacle.x === newObstacle.x && obstacle.y === newObstacle.y));
+    return newObstacle;
 }
 
 // Move snake
@@ -80,12 +102,31 @@ function moveSnake() {
         return;
     }
 
+    // Check obstacle collision
+    if (obstacles.some(obstacle => obstacle.x === head.x && obstacle.y === head.y)) {
+        gameOver();
+        return;
+    }
+
     snake.unshift(head);
 
     // Check food collision
     if (head.x === food.x && head.y === food.y) {
         score += 10;
         scoreElement.textContent = score;
+        foodEaten++;
+        
+        // Level up every FOODS_PER_LEVEL foods
+        if (foodEaten % FOODS_PER_LEVEL === 0) {
+            level++;
+            levelElement.textContent = level;
+            obstacles.push(generateObstacle());
+            
+            // Increase speed by 10ms (decrease interval)
+            clearInterval(gameLoop);
+            startGameLoop();
+        }
+        
         food = generateFood();
     } else {
         snake.pop();
@@ -145,6 +186,14 @@ function render() {
         ctx.fillRect(segment.x * CELL_SIZE, segment.y * CELL_SIZE, CELL_SIZE - 2, CELL_SIZE - 2);
     });
 
+    // Draw obstacles
+    ctx.fillStyle = '#ff00ff';
+    ctx.shadowColor = '#ff00ff';
+    ctx.shadowBlur = 8;
+    obstacles.forEach(obstacle => {
+        ctx.fillRect(obstacle.x * CELL_SIZE, obstacle.y * CELL_SIZE, CELL_SIZE - 2, CELL_SIZE - 2);
+    });
+
     // Draw food
     ctx.fillStyle = '#ff0000';
     ctx.shadowColor = '#ff0000';
@@ -164,7 +213,8 @@ function gameStep() {
 
 // Start game loop
 function startGameLoop() {
-    gameLoop = setInterval(gameStep, MOVE_SPEED);
+    const currentSpeed = MOVE_SPEED - ((level - 1) * SPEED_INCREASE);
+    gameLoop = setInterval(gameStep, Math.max(currentSpeed, 40)); // Minimum speed of 40ms
 }
 
 // Game over
@@ -179,8 +229,12 @@ function restartGame() {
     snake = [{ x: 10, y: 10 }];
     direction = { x: 1, y: 0 };
     food = generateFood();
+    obstacles = [];
     score = 0;
+    level = 1;
+    foodEaten = 0;
     scoreElement.textContent = score;
+    levelElement.textContent = level;
     gameRunning = true;
     gameOverElement.style.visibility = 'hidden';
     clearInterval(gameLoop);

@@ -16,10 +16,21 @@ body {
     text-align: center;
 }
 
-.score {
-    font-size: 24px;
+.stats {
+    display: flex;
+    justify-content: space-between;
+    width: 500px;
     margin-bottom: 20px;
-    text-shadow: 0 0 10px #00ff00;
+}
+
+.score {
+    font-size: 20px;
+    text-shadow: 0 0 8px #00ff00;
+}
+
+.level {
+    font-size: 20px;
+    text-shadow: 0 0 8px #00ffff;
 }
 
 canvas {
