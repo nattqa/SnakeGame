@@ -19,7 +19,7 @@ body {
 .stats {
     display: flex;
     justify-content: space-between;
-    width: 500px;
+    min-width: 500px;
     margin-bottom: 20px;
 }
 

@@ -5,11 +5,17 @@ const levelElement = document.getElementById('level');
 const gameOverElement = document.getElementById('gameOver');
 
 // Game constants
-const GRID_SIZE = 25;
+const GRID_SIZE = 20;//25;
 const CELL_SIZE = 20;
-const MOVE_SPEED = 160;
+const MOVE_SPEED = 300;//160;
 const SPEED_INCREASE = 10;  // Speed increase in milliseconds per level
 const FOODS_PER_LEVEL = 5;  // Number of foods needed to level up
+const SPECIAL_FOOD_DURATION = 5000;  // Special food duration in milliseconds
+const SPECIAL_FOOD_CHANCE = 0.15;  // Chance of special food appearing (15%)
+
+// Set canvas size based on constants
+canvas.width = GRID_SIZE * CELL_SIZE;
+canvas.height = GRID_SIZE * CELL_SIZE;
 
 // Game state
 let snake = [{ x: 10, y: 10 }];
@@ -19,6 +25,9 @@ let obstacles = [];
 let score = 0;
 let level = 1;
 let foodEaten = 0;
+let specialFood = null;
+let specialFoodTimer = null;
+let specialFoodEndTime = null;
 let gameRunning = true;
 let gameLoop;
 
@@ -80,8 +89,47 @@ function generateObstacle() {
         };
     } while (snake.some(segment => segment.x === newObstacle.x && segment.y === newObstacle.y) ||
              (food.x === newObstacle.x && food.y === newObstacle.y) ||
+             (specialFood && specialFood.x === newObstacle.x && specialFood.y === newObstacle.y) ||
              obstacles.some(obstacle => obstacle.x === newObstacle.x && obstacle.y === newObstacle.y));
     return newObstacle;
+}
+
+// Spawn special food
+function spawnSpecialFood() {
+    let newSpecialFood;
+    do {
+        newSpecialFood = {
+            x: Math.floor(Math.random() * GRID_SIZE),
+            y: Math.floor(Math.random() * GRID_SIZE)
+        };
+    } while (snake.some(segment => segment.x === newSpecialFood.x && segment.y === newSpecialFood.y) ||
+             (food.x === newSpecialFood.x && food.y === newSpecialFood.y) ||
+             obstacles.some(obstacle => obstacle.x === newSpecialFood.x && obstacle.y === newSpecialFood.y));
+    
+    specialFood = newSpecialFood;
+    specialFoodEndTime = Date.now() + SPECIAL_FOOD_DURATION;
+    
+    // Clear special food after duration
+    specialFoodTimer = setTimeout(() => {
+        clearSpecialFood();
+    }, SPECIAL_FOOD_DURATION);
+}
+
+// Clear special food
+function clearSpecialFood() {
+    specialFood = null;
+    specialFoodEndTime = null;
+    if (specialFoodTimer) {
+        clearTimeout(specialFoodTimer);
+        specialFoodTimer = null;
+    }
+}
+
+// Remove obstacle
+function removeObstacle() {
+    if (obstacles.length > 0) {
+        obstacles.pop();  // Remove last obstacle
+    }
 }
 
 // Move snake
@@ -122,14 +170,27 @@ function moveSnake() {
             levelElement.textContent = level;
             obstacles.push(generateObstacle());
             
-            // Increase speed by 10ms (decrease interval)
+            // Increase speed by SPEED_INCREASE ms (decrease interval)
             clearInterval(gameLoop);
             startGameLoop();
+        }
+        
+        // Chance to spawn special food
+        if (Math.random() < SPECIAL_FOOD_CHANCE && !specialFood) {
+            spawnSpecialFood();
         }
         
         food = generateFood();
     } else {
         snake.pop();
+    }
+    
+    // Check special food collision
+    if (specialFood && head.x === specialFood.x && head.y === specialFood.y) {
+        removeObstacle();
+        clearSpecialFood();
+        score += 20;  // Bonus points for special food
+        scoreElement.textContent = score;
     }
 }
 
@@ -195,10 +256,27 @@ function render() {
     });
 
     // Draw food
-    ctx.fillStyle = '#ff0000';
-    ctx.shadowColor = '#ff0000';
+    ctx.fillStyle = '#80ff00';
+    ctx.shadowColor = '#80ff00';
     ctx.shadowBlur = 15;
     ctx.fillRect(food.x * CELL_SIZE, food.y * CELL_SIZE, CELL_SIZE - 2, CELL_SIZE - 2);
+    
+    // Draw special food
+    if (specialFood) {
+        ctx.fillStyle = '#00ff00';
+        ctx.shadowColor = '#00ff00';
+        ctx.shadowBlur = 20;
+        ctx.fillRect(specialFood.x * CELL_SIZE, specialFood.y * CELL_SIZE, CELL_SIZE - 2, CELL_SIZE - 2);
+        
+        // Draw countdown number
+        const timeLeft = Math.ceil((specialFoodEndTime - Date.now()) / 1000);
+        ctx.fillStyle = '#000';
+        ctx.shadowBlur = 0;
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(timeLeft.toString(), specialFood.x * CELL_SIZE + CELL_SIZE/2, specialFood.y * CELL_SIZE + CELL_SIZE/2);
+    }
     
     ctx.shadowBlur = 0;
 }
@@ -230,6 +308,8 @@ function restartGame() {
     direction = { x: 1, y: 0 };
     food = generateFood();
     obstacles = [];
+    specialFood = null;
+    specialFoodEndTime = null;
     score = 0;
     level = 1;
     foodEaten = 0;
@@ -237,6 +317,10 @@ function restartGame() {
     levelElement.textContent = level;
     gameRunning = true;
     gameOverElement.style.visibility = 'hidden';
+    if (specialFoodTimer) {
+        clearTimeout(specialFoodTimer);
+        specialFoodTimer = null;
+    }
     clearInterval(gameLoop);
     startGameLoop();
 }
